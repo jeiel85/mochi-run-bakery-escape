@@ -125,21 +125,77 @@ export class MochiGame {
     };
   }
 
+  normalizeSaveData(parsed) {
+    const def = this.getDefaultSaveData();
+    if (!parsed || typeof parsed !== 'object') return def;
+
+    const validCharIds = new Set(CHARACTERS.map((c) => c.id));
+    const validPetIds = new Set(PETS.map((p) => p.id));
+    const validTreasureIds = new Set(TREASURES.map((t) => t.id));
+
+    const unlockedChars = Array.isArray(parsed.unlockedChars)
+      ? parsed.unlockedChars.filter((id) => validCharIds.has(id))
+      : ['mochi'];
+    if (!unlockedChars.includes('mochi')) unlockedChars.unshift('mochi');
+
+    const unlockedPets = Array.isArray(parsed.unlockedPets)
+      ? parsed.unlockedPets.filter((id) => validPetIds.has(id))
+      : ['pet_berry'];
+    if (!unlockedPets.includes('pet_berry')) unlockedPets.unshift('pet_berry');
+
+    const unlockedTreasures = Array.isArray(parsed.unlockedTreasures)
+      ? parsed.unlockedTreasures.filter((id) => validTreasureIds.has(id))
+      : [];
+
+    const equippedTreasures = Array.isArray(parsed.equippedTreasures)
+      ? parsed.equippedTreasures.filter((id) => unlockedTreasures.includes(id)).slice(0, 2)
+      : [];
+
+    return {
+      ...def,
+      highScore: Number.isFinite(parsed.highScore) && parsed.highScore >= 0 ? Math.floor(parsed.highScore) : 0,
+      coins: Number.isFinite(parsed.coins) && parsed.coins >= 0 ? Math.floor(parsed.coins) : def.coins,
+      selectedChar: unlockedChars.includes(parsed.selectedChar) ? parsed.selectedChar : 'mochi',
+      selectedPet: unlockedPets.includes(parsed.selectedPet) ? parsed.selectedPet : 'pet_berry',
+      selectedStage:
+        Number.isInteger(parsed.selectedStage) && parsed.selectedStage >= 0 && parsed.selectedStage <= STAGES.length
+          ? parsed.selectedStage
+          : 0,
+      maxUnlockedStage:
+        Number.isInteger(parsed.maxUnlockedStage) && parsed.maxUnlockedStage >= 1
+          ? Math.min(STAGES.length, parsed.maxUnlockedStage)
+          : 1,
+      unlockedChars,
+      unlockedPets,
+      unlockedTreasures,
+      equippedTreasures,
+      claimedAchievements: Array.isArray(parsed.claimedAchievements)
+        ? parsed.claimedAchievements.filter((id) => typeof id === 'string')
+        : [],
+      stats: {
+        totalRuns: Math.max(0, Math.floor(Number(parsed.stats?.totalRuns) || 0)),
+        totalDistance: Math.max(0, Math.floor(Number(parsed.stats?.totalDistance) || 0)),
+        totalJellies: Math.max(0, Math.floor(Number(parsed.stats?.totalJellies) || 0)),
+        totalSmashed: Math.max(0, Math.floor(Number(parsed.stats?.totalSmashed) || 0)),
+        bestCombo: Math.max(0, Math.floor(Number(parsed.stats?.bestCombo) || 0))
+      },
+      upgrades: {
+        hpLevel: Math.max(1, Math.floor(Number(parsed.upgrades?.hpLevel) || 1)),
+        jellyLevel: Math.max(1, Math.floor(Number(parsed.upgrades?.jellyLevel) || 1)),
+        magnetLevel: Math.max(1, Math.floor(Number(parsed.upgrades?.magnetLevel) || 1)),
+        coinLevel: Math.max(1, Math.floor(Number(parsed.upgrades?.coinLevel) || 1))
+      },
+      lastSavedAt: typeof parsed.lastSavedAt === 'string' ? parsed.lastSavedAt : new Date().toISOString()
+    };
+  }
+
   loadSaveData() {
     const def = this.getDefaultSaveData();
     try {
       const raw = localStorage.getItem('mochirun_save_v1');
       if (!raw) return def;
       const parsed = JSON.parse(raw);
-      return {
-        ...def,
-        ...parsed,
-        stats: { ...def.stats, ...(parsed.stats || {}) },
-        upgrades: { ...def.upgrades, ...(parsed.upgrades || {}) },
-        equippedTreasures: Array.isArray(parsed.equippedTreasures) ? parsed.equippedTreasures.slice(0, 2) : [],
-        unlockedTreasures: Array.isArray(parsed.unlockedTreasures) ? parsed.unlockedTreasures : [],
-        claimedAchievements: Array.isArray(parsed.claimedAchievements) ? parsed.claimedAchievements : []
-      };
+      return this.normalizeSaveData(parsed);
     } catch {
       return def;
     }
@@ -152,8 +208,9 @@ export class MochiGame {
       if (this.ui && this.ui.onSaveIndicator) {
         this.ui.onSaveIndicator(this.saveData.lastSavedAt);
       }
+      return true;
     } catch {
-      // ignore storage quota errors
+      return false;
     }
   }
 
@@ -168,17 +225,15 @@ export class MochiGame {
       const clean = codeStr.trim();
       const json = decodeURIComponent(atob(clean));
       const parsed = JSON.parse(json);
-      if (!parsed || typeof parsed.coins !== 'number') {
+      if (!parsed || typeof parsed !== 'object' || typeof parsed.coins !== 'number' || !Number.isFinite(parsed.coins)) {
         throw new Error('Invalid save format');
       }
-      const def = this.getDefaultSaveData();
-      this.saveData = {
-        ...def,
-        ...parsed,
-        stats: { ...def.stats, ...(parsed.stats || {}) },
-        upgrades: { ...def.upgrades, ...(parsed.upgrades || {}) }
-      };
-      this.save();
+      const prevData = this.saveData;
+      this.saveData = this.normalizeSaveData(parsed);
+      if (!this.save()) {
+        this.saveData = prevData;
+        return false;
+      }
       return true;
     } catch {
       return false;

@@ -517,9 +517,13 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 const btnManualSave = document.getElementById('btn-manual-save');
 if (btnManualSave) {
   btnManualSave.addEventListener('click', () => {
-    game.save();
-    audio.playPowerup();
-    showNotice('✅ 브라우저 로컬 저장소에 즉시 저장되었습니다!');
+    if (game.save()) {
+      audio.playPowerup();
+      showNotice('✅ 브라우저 로컬 저장소에 즉시 저장되었습니다!');
+    } else {
+      audio.playHit();
+      showNotice('❌ 브라우저 저장소 접근이 차단되었거나 용량이 부족합니다.');
+    }
   });
 }
 
