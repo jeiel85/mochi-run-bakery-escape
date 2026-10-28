@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>모찌런: 베이커리 대탈출 (Mochi Run: Bakery Escape)</title>
-  <meta name="description" content="오리지널 디저트 영웅들과 함께 달리는 달콤 바삭 아케이드 러닝 액션 게임! 딸기찹쌀 모찌, 커스터드 푸딩킹, 단팥 붕어빵 기사, 별사탕 요정 슈가와 함께 오븐을 탈출하세요." />
+  <meta name="description" content="7종의 창작 디저트 영웅, 7종의 슈가 펫, 5종의 전설 보물, 8개의 월드 스테이지를 질주하는 60FPS 아케이드 러닝 액션 게임!" />
   <link rel="icon" type="image/svg+xml" href="assets/characters/mochi_run1.svg" />
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -25,13 +25,14 @@
         <div class="bars-box">
           <div class="hp-bar-outer">
             <div id="hp-bar-fill"></div>
-            <div id="hp-text">130 / 130</div>
+            <div id="hp-text">135 / 135</div>
           </div>
           <div class="skill-bar-row">
             <span id="hud-skill-name">딸기시럽 무적 대시</span>
             <div class="skill-bar-outer">
               <div id="skill-bar-fill"></div>
             </div>
+            <span id="hud-shields" class="hidden">🛡️×1</span>
           </div>
         </div>
 
@@ -58,7 +59,7 @@
       </div>
     </section>
 
-    <!-- Lobby / Character & Pet Shop Modal -->
+    <!-- Lobby / Character, Pet, Treasure, Stage, Achievement & Save Manager Modal -->
     <section id="lobby-modal" class="modal-overlay">
       <div class="lobby-container">
         <div class="lobby-left">
@@ -73,6 +74,7 @@
             <div id="lobby-char-skill" class="skill-box">
               딸기시럽 무적 대시 — 13초마다 고속 질주하며 주변 장애물을 황금 딸기젤리로 변환합니다!
             </div>
+            <div id="equipped-treasures-bar" class="equipped-treasures-bar"></div>
           </div>
           <button id="btn-start-game" class="primary-run-btn">🍓 오븐 탈출 시작하기! (RUN)</button>
         </div>
@@ -80,32 +82,77 @@
         <div class="lobby-right">
           <div class="lobby-header">
             <div class="tabs-bar">
-              <button class="tab-btn active" data-target="tab-chars">🍡 디저트 영웅</button>
-              <button class="tab-btn" data-target="tab-pets">🐾 슈가 펫</button>
-              <button class="tab-btn" data-target="tab-upgrades">⚡ 능력치 강화</button>
+              <button class="tab-btn active" data-target="tab-chars">🍡 영웅(7)</button>
+              <button class="tab-btn" data-target="tab-pets">🐾 펫(7)</button>
+              <button class="tab-btn" data-target="tab-upgrades">👑 보물·강화</button>
+              <button class="tab-btn" data-target="tab-stages">🗺️ 스테이지(8)</button>
+              <button class="tab-btn" data-target="tab-achieve">🏅 업적·도감</button>
+              <button class="tab-btn" data-target="tab-save">💾 저장관리</button>
             </div>
             <div class="currency-pills">
-              <div class="pill">🏆 최고점수 <span id="lobby-highscore">0</span></div>
-              <div class="pill">🪙 보유 코인 <span id="lobby-coins">400</span></div>
+              <div id="save-status-pill" class="pill save-pill">💾 자동 저장 활성</div>
+              <div class="pill">🏆 <span id="lobby-highscore">0</span></div>
+              <div class="pill">🪙 <span id="lobby-coins">650</span></div>
             </div>
           </div>
 
+          <!-- 1. Characters Panel -->
           <div id="tab-chars" class="tab-panel">
             <div id="char-grid" class="cards-grid"></div>
           </div>
 
+          <!-- 2. Pets Panel -->
           <div id="tab-pets" class="tab-panel hidden">
             <div id="pet-grid" class="cards-grid"></div>
           </div>
 
+          <!-- 3. Treasures & Upgrades Panel -->
           <div id="tab-upgrades" class="tab-panel hidden">
+            <h3 class="section-subtitle">👑 전설의 베이커리 보물 (최대 2개 장착 가능)</h3>
+            <div id="treasure-grid" class="cards-grid" style="margin-bottom: 14px;"></div>
+            <h3 class="section-subtitle">⚡ 오븐 영구 능력치 강화</h3>
             <div id="upgrade-grid" class="upgrade-list"></div>
           </div>
 
+          <!-- 4. World Map / 8 Stages Panel -->
+          <div id="tab-stages" class="tab-panel hidden">
+            <h3 class="section-subtitle">🗺️ 베이커리 월드맵 (출발 스테이지 선택 가능)</h3>
+            <div id="stage-grid" class="upgrade-list"></div>
+          </div>
+
+          <!-- 5. Achievements & Item Encyclopedia Panel -->
+          <div id="tab-achieve" class="tab-panel hidden">
+            <h3 class="section-subtitle">🏅 파티시에 업적 미션 (달성 시 코인 보상!)</h3>
+            <div id="achievement-list" class="upgrade-list" style="margin-bottom: 16px;"></div>
+            <h3 class="section-subtitle">🍬 아이템 백과사전 (총 13종)</h3>
+            <div id="item-guide-grid" class="guide-grid"></div>
+          </div>
+
+          <!-- 6. Save & Cloud Code Manager Panel -->
+          <div id="tab-save" class="tab-panel hidden">
+            <h3 class="section-subtitle">💾 세이브 데이터 관리 & 클라우드 코드 백업</h3>
+            <div id="save-stats-summary" class="stats-summary-box"></div>
+            <div class="save-actions-row">
+              <button id="btn-manual-save" class="card-btn active">💾 브라우저에 즉시 저장</button>
+              <button id="btn-export-json" class="card-btn buy">📥 세이브 파일(.json) 다운로드</button>
+              <button id="btn-import-json" class="card-btn equip">📤 세이브 파일(.json) 불러오기</button>
+              <input id="input-import-json" type="file" accept=".json" class="hidden" />
+            </div>
+            <div class="save-code-box">
+              <label for="save-code-input">🔑 <strong>기기 간 이동용 백업 코드 (복사하거나 붙여넣어 복원):</strong></label>
+              <textarea id="save-code-input" rows="3" placeholder="백업 코드 복사 버튼을 누르거나, 다른 기기에서 복사한 코드를 여기에 붙여넣고 [코드로 복원하기]를 누르세요."></textarea>
+              <div class="save-actions-row">
+                <button id="btn-copy-code" class="card-btn buy">📋 현재 데이터 백업 코드 복사</button>
+                <button id="btn-load-code" class="card-btn equip">🔄 붙여넣은 코드로 복원하기</button>
+                <button id="btn-reset-save" class="card-btn danger">🗑️ 전체 데이터 초기화</button>
+              </div>
+            </div>
+          </div>
+
           <div class="controls-guide">
-            <span>🎮 <strong>점프/2단점프:</strong> Space / ↑ / W / 좌측 버튼</span>
-            <span>💨 <strong>슬라이드:</strong> ↓ / S / 우측 버튼</span>
-            <span>🌈 <strong>M-O-C-H-I</strong> 완성 시 피버타임!</span>
+            <span>🎮 <strong>점프/2단점프:</strong> Space / ↑ / W</span>
+            <span>💨 <strong>슬라이드:</strong> ↓ / S</span>
+            <span>🌈 <strong>M-O-C-H-I</strong> 피버타임 & 13종 아이템!</span>
           </div>
         </div>
       </div>
@@ -140,6 +187,10 @@
             <span id="go-highscore">0</span>
           </div>
           <div class="stat-row">
+            <span>도달 구역</span>
+            <span id="go-stage" style="color:#ff8fa3;">STAGE 1</span>
+          </div>
+          <div class="stat-row">
             <span>획득 코인</span>
             <span id="go-coins" style="color:#ffbe0b;">+0</span>
           </div>
@@ -153,7 +204,7 @@
           </div>
         </div>
         <div class="dialog-actions">
-          <button id="btn-to-lobby" class="secondary-btn">🛒 캐릭터/강화 로비</button>
+          <button id="btn-to-lobby" class="secondary-btn">🛒 캐릭터/보물 로비</button>
           <button id="btn-retry" class="primary-run-btn">🔥 다시 달리기!</button>
         </div>
       </div>
