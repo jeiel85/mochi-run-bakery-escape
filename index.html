@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>모찌런: 베이커리 대탈출 (Mochi Run: Bakery Escape)</title>
+  <meta name="description" content="오리지널 디저트 영웅들과 함께 달리는 달콤 바삭 아케이드 러닝 액션 게임! 딸기찹쌀 모찌, 커스터드 푸딩킹, 단팥 붕어빵 기사, 별사탕 요정 슈가와 함께 오븐을 탈출하세요." />
+  <link rel="icon" type="image/svg+xml" href="assets/characters/mochi_run1.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="app-shell">
+    <!-- Top Right Utility Controls -->
+    <div class="top-utility">
+      <button id="btn-mute" class="icon-btn" title="사운드 켜기/끄기">🔊</button>
+      <button id="btn-pause" class="icon-btn" title="일시정지 (P / ESC)">⏸️</button>
+    </div>
+
+    <!-- Main 60FPS HTML5 Game Canvas -->
+    <canvas id="game-canvas" width="960" height="540"></canvas>
+
+    <!-- In-Game HUD Overlay -->
+    <section id="hud-layer" class="hidden">
+      <div class="hud-top">
+        <div class="bars-box">
+          <div class="hp-bar-outer">
+            <div id="hp-bar-fill"></div>
+            <div id="hp-text">130 / 130</div>
+          </div>
+          <div class="skill-bar-row">
+            <span id="hud-skill-name">딸기시럽 무적 대시</span>
+            <div class="skill-bar-outer">
+              <div id="skill-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="fever-slots" title="M-O-C-H-I 알파벳을 모두 모으면 무지개 피버 타임 발동!"></div>
+
+        <div class="score-box">
+          <div class="score-line"><span id="hud-score">0</span> <small>PTS</small></div>
+          <div class="coin-line">🪙 <span id="hud-coins">0</span></div>
+          <div id="hud-combo" class="hidden">10 COMBO!</div>
+        </div>
+      </div>
+
+      <div id="stage-toast" class="hidden"></div>
+
+      <div class="hud-controls">
+        <button id="btn-touch-jump" class="action-pedal pedal-jump">
+          JUMP
+          <span>Space / ↑ (2단 점프)</span>
+        </button>
+        <button id="btn-touch-slide" class="action-pedal pedal-slide">
+          SLIDE
+          <span>↓ / S (길게 누르기)</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Lobby / Character & Pet Shop Modal -->
+    <section id="lobby-modal" class="modal-overlay">
+      <div class="lobby-container">
+        <div class="lobby-left">
+          <img src="assets/ui/logo.svg" alt="Mochi Run Logo" class="logo-banner" />
+          <div class="stage-pedestal">
+            <img id="lobby-preview-pet" src="assets/pets/pet_berry.svg" alt="Companion Pet" />
+            <img id="lobby-preview-char" src="assets/characters/mochi_run1.svg" alt="Selected Character" />
+          </div>
+          <div class="char-summary">
+            <h2 id="lobby-char-name">딸기찹쌀 모찌</h2>
+            <p id="lobby-char-title" class="sub">말랑말랑 베이커리의 영웅</p>
+            <div id="lobby-char-skill" class="skill-box">
+              딸기시럽 무적 대시 — 13초마다 고속 질주하며 주변 장애물을 황금 딸기젤리로 변환합니다!
+            </div>
+          </div>
+          <button id="btn-start-game" class="primary-run-btn">🍓 오븐 탈출 시작하기! (RUN)</button>
+        </div>
+
+        <div class="lobby-right">
+          <div class="lobby-header">
+            <div class="tabs-bar">
+              <button class="tab-btn active" data-target="tab-chars">🍡 디저트 영웅</button>
+              <button class="tab-btn" data-target="tab-pets">🐾 슈가 펫</button>
+              <button class="tab-btn" data-target="tab-upgrades">⚡ 능력치 강화</button>
+            </div>
+            <div class="currency-pills">
+              <div class="pill">🏆 최고점수 <span id="lobby-highscore">0</span></div>
+              <div class="pill">🪙 보유 코인 <span id="lobby-coins">400</span></div>
+            </div>
+          </div>
+
+          <div id="tab-chars" class="tab-panel">
+            <div id="char-grid" class="cards-grid"></div>
+          </div>
+
+          <div id="tab-pets" class="tab-panel hidden">
+            <div id="pet-grid" class="cards-grid"></div>
+          </div>
+
+          <div id="tab-upgrades" class="tab-panel hidden">
+            <div id="upgrade-grid" class="upgrade-list"></div>
+          </div>
+
+          <div class="controls-guide">
+            <span>🎮 <strong>점프/2단점프:</strong> Space / ↑ / W / 좌측 버튼</span>
+            <span>💨 <strong>슬라이드:</strong> ↓ / S / 우측 버튼</span>
+            <span>🌈 <strong>M-O-C-H-I</strong> 완성 시 피버타임!</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pause Modal -->
+    <section id="pause-modal" class="modal-overlay hidden">
+      <div class="dialog-card">
+        <h2>⏸️ 잠시 쉬어가는 시간</h2>
+        <p style="color:#ffccd5; margin-bottom:20px;">따끈한 차 한 잔 마시고 다시 달려볼까요?</p>
+        <div class="dialog-actions">
+          <button id="btn-pause-lobby" class="secondary-btn">🏠 로비로</button>
+          <button id="btn-resume" class="primary-run-btn">▶️ 계속 달리기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Game Over Result Modal -->
+    <section id="gameover-modal" class="modal-overlay hidden">
+      <div class="dialog-card">
+        <h2>🏁 베이커리 런 종료!</h2>
+        <div id="go-new-record" class="hidden" style="color:#00f5d4; font-weight:900; margin-bottom:6px;">
+          🎉 NEW HIGH SCORE! 신기록 달성! 🎉
+        </div>
+        <div class="stats-table">
+          <div class="stat-row big">
+            <span>최종 점수</span>
+            <span id="go-score">0</span>
+          </div>
+          <div class="stat-row">
+            <span>최고 기록</span>
+            <span id="go-highscore">0</span>
+          </div>
+          <div class="stat-row">
+            <span>획득 코인</span>
+            <span id="go-coins" style="color:#ffbe0b;">+0</span>
+          </div>
+          <div class="stat-row">
+            <span>최대 콤보</span>
+            <span id="go-combo">0회</span>
+          </div>
+          <div class="stat-row">
+            <span>달린 거리</span>
+            <span id="go-distance">0m</span>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button id="btn-to-lobby" class="secondary-btn">🛒 캐릭터/강화 로비</button>
+          <button id="btn-retry" class="primary-run-btn">🔥 다시 달리기!</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
